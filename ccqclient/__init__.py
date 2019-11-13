@@ -46,7 +46,7 @@ def raw_ccqstat(hostname, username, password, jobId="all", printErrors="", print
     response = json.loads(response)
     return response["payload"]["message"]
 
-def raw_ccqsub(hostname, username, password, location, text):
+def raw_ccqsub(hostname, username, password, path, name, text):
     numberOfInstancesRequested = 1
     numCpusRequested = 1
     stdoutFileLocation = "default"
@@ -82,9 +82,9 @@ def raw_ccqsub(hostname, username, password, location, text):
     cpuPlatform = None
     maintain = "False"
 
-    jobScriptLocation = location
+    jobScriptLocation = path
     jobScriptText = text
-    jobName = "job.sh"
+    jobName = name
     ccOptionsParsed = {"numberOfInstancesRequested": str(numberOfInstancesRequested),  "numCpusRequested": str(numCpusRequested), "wallTimeRequested": "None", "stdoutFileLocation": str(stdoutFileLocation), "stderrFileLocation": str(stderrFileLocation), "combineStderrAndStdout": "None", "copyEnvironment": "None", "eventNotification": "None", "mailingAddress": "None", "jobRerunable": "None", "memoryRequested": str(memoryRequested), "accountToCharge": "None", "jobBeginTime": "None", "jobArrays": "None", "useSpot": str(useSpot), "spotPrice": str(spotPrice), "requestedInstanceType": str(requestedInstanceType), "networkTypeRequested": str(networkTypeRequested), "optimizationChoice": str(optimizationChoice),  "pathToExecutable": "None", "criteriaPriority": str(criteriaPriority), "schedulerToUse": str(schedulerToUse), "schedType": str(schedType), "volumeType": str(volumeType), "certLength": str(certLength), "jobWorkDir": str(output), "justPrice": str(justPrice), "ccqHubSubmission": "False", "useSpotFleet": str(useSpotFleet), "spotFleetWeights": str(spotFleetWeights), "spotFleetTotalSize": spotFleetTotalSize, "spotFleetType": str(spotFleetType), "terminateInstantly": str(terminateInstantly), "skipProvisioning": str(skipProvisioning), "submitInstantly": str(submitInstantly), "timeLimit": str(timeLimit), "createPInstances": str(createPInstances), "image": str(image), "maxIdle": str(maxIdle), "placementGroupName": str(placementGroupName), "useGpu": str(useGpu), "gpuType": str(gpuType), "usePreemptible": str(usePreemptible), "cpuPlatform": str(cpuPlatform), "maintain": str(maintain)}
     jobMD5Hash = hashlib.md5("".join(text.split()).encode()).hexdigest()
     encodedUserName = username
@@ -150,18 +150,16 @@ def ccqstat(hostname, username, password):
 
     return jobs
 
-def ccqsub(hostname, username, password):
-    text = "#!/bin/sh\necho hello\necho world > /mnt/orangefs/file\n"
-
+def ccqsub(hostname, username, password, job_path, job_name, job_body):
     f = tempfile.NamedTemporaryFile(delete=False)
     f.write(text.encode())
     f.close()
 
     client = webdav3.client.Client({"webdav_hostname": "https://%s" % hostname,
         "webdav_login": username, "webdav_password": password})
-    client.upload("/mnt/orangefs/job.sh", f.name)
+    client.upload(job_path + job_name, f.name)
     os.unlink(f.name)
 
     # XXX: Transfer job script before calling raw_ccqsub?
-    return raw_ccqsub(hostname, username, password, "/mnt/orangefs/job.sh", text)
+    return raw_ccqsub(hostname, username, password, job_path, job_name, job_body)
     # XXX: Get output?
