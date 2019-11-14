@@ -152,7 +152,7 @@ def ccqstat(hostname, username, password):
 
 def ccqsub(hostname, username, password, job_path, job_name, job_body):
     f = tempfile.NamedTemporaryFile(delete=False)
-    f.write(text.encode())
+    f.write(job_body.encode())
     f.close()
 
     client = webdav3.client.Client({"webdav_hostname": "https://%s" % hostname,
