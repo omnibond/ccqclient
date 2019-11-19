@@ -1,3 +1,4 @@
+import enum
 import hashlib
 import json
 import os
@@ -105,59 +106,77 @@ def raw_ccqsub(hostname, username, password, path, name, jobScript, volumeType, 
     return response["payload"]["message"]
 
 class CCQJob:
-    def __init__(self, hostname, username, password, job_id, job_name,
-        scheduler_name, job_status):
-        self.hostname = hostname
-        self.username = username
-        self.password = password
+    def __init__(self, client, job_id, job_name, scheduler_name, job_status):
+        self.client = client
         self.job_id = job_id
         self.job_name = job_name
         self.scheduler_name = scheduler_name
         self.job_status = job_status
 
     def __repr__(self):
-        return "CCQJob(%s, %s, %s, %s)" % (self.job_id, self.job_name,
-            self.scheduler_name, self.job_status)
+        return "CCQJob(%s, %s, %s, %s)" % (self.job_id, self.job_name, self.scheduler_name, self.job_status)
 
     def info(self):
-        return raw_ccqstat(self.hostname, self.username, self.password,
-            jobId=self.job_id, databaseInfo="True")
+        return raw_ccqstat(self.client.hostname, self.client.username, self.client.password, jobId=self.job_id, databaseInfo="True")
 
     def errors(self):
-        return raw_ccqstat(self.hostname, self.username, self.password,
-            jobId=self.job_id, printErrors="True")
+        return raw_ccqstat(self.client.hostname, self.client.username, self.client.password, jobId=self.job_id, printErrors="True")
 
     def output(self):
-        return raw_ccqstat(self.hostname, self.username, self.password,
-            jobId=self.job_id, printOutputLocation="True")
+        return raw_ccqstat(self.client.hostname, self.client.username, self.client.password, jobId=self.job_id, printOutputLocation="True")
 
     def instances(self):
-        return raw_ccqstat(self.hostname, self.username, self.password,
-            jobId=self.job_id, printInstancesForJob="True")
+        return raw_ccqstat(self.client.hostname, self.client.username, self.client.password, jobId=self.job_id, printInstancesForJob="True")
 
-def ccqstat(hostname, username, password):
-    data = raw_ccqstat(hostname, username, password)
+class CCQCloud(enum.Enum):
+    AWS = enum.auto()
+    GCP = enum.auto()
 
-    jobs = []
-    for item in data.split("\n")[2:]:
-        if len(item) == 0:
-            break
-        x = item.split()
-        jobs.append(CCQJob(hostname, username, password,
-            x[0], x[1], x[2], x[3]))
+class CCQScheduler(enum.Enum):
+    Slurm = enum.auto()
+    Torque = enum.auto()
 
-    return jobs
+class CCQClient:
+    def __init__(self, hostname, username, password, cloud, scheduler):
+        self.hostname = hostname
+        self.username = username
+        self.password = password
+        self.cloud = cloud
+        self.scheduler = scheduler
 
-def ccqsub(hostname, username, password, job_path, job_name, job_body, vol_type, scheduler):
-    f = tempfile.NamedTemporaryFile(delete=False)
-    f.write(job_body.encode())
-    f.close()
+    def ccqstat(self):
+        data = raw_ccqstat(self.hostname, self.username, self.password)
 
-    client = webdav3.client.Client({"webdav_hostname": "https://%s" % hostname,
-        "webdav_login": username, "webdav_password": password})
-    client.upload(job_path + job_name, f.name)
-    os.unlink(f.name)
+        jobs = []
+        for item in data.split("\n")[2:]:
+            if len(item) == 0:
+                break
+            x = item.split()
+            jobs.append(CCQJob(self, x[0], x[1], x[2], x[3]))
 
-    # XXX: Transfer job script before calling raw_ccqsub?
-    return raw_ccqsub(hostname, username, password, job_path, job_name, job_body, vol_type, scheduler)
-    # XXX: Get output?
+        return jobs
+
+    def ccqsub(self, job_path, job_name, job_body, vol_type=None, scheduler=None):
+        if not vol_type:
+            if self.cloud == CCQCloud.AWS:
+                vol_type = "ssd"
+            elif self.cloud == CCQCloud.GCP:
+                vol_type = "pd-ssd"
+
+        if not scheduler:
+            if self.scheduler == CCQScheduler.Slurm:
+                scheduler = "SLURM"
+            elif self.scheduler == CCQScheduler.Torque:
+                scheduler = "Torque"
+
+        f = tempfile.NamedTemporaryFile(delete=False)
+        f.write(job_body.encode())
+        f.close()
+
+        client = webdav3.client.Client({"webdav_hostname": "https://%s" % self.hostname, "webdav_login": self.username, "webdav_password": self.password})
+        client.upload(job_path + job_name, f.name)
+        os.unlink(f.name)
+
+        # XXX: Transfer job script before calling raw_ccqsub?
+        return raw_ccqsub(self.hostname, self.username, self.password, job_path, job_name, job_body, vol_type, scheduler)
+        # XXX: Get output?
