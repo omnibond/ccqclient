@@ -46,7 +46,7 @@ def raw_ccqstat(hostname, username, password, jobId="all", printErrors="", print
     response = json.loads(response)
     return response["payload"]["message"]
 
-def raw_ccqsub(hostname, username, password, path, name, jobScript, volType, scheduler):
+def raw_ccqsub(hostname, username, password, path, name, jobScript, volumeType, schedType):
     numberOfInstancesRequested = 1
     numCpusRequested = 1
     stdoutFileLocation = "default"
@@ -59,10 +59,6 @@ def raw_ccqsub(hostname, username, password, path, name, jobScript, volType, sch
     optimizationChoice = "cost"
     criteriaPriority = "mcn"
     schedulerToUse = "default"
-    #schedType = "SLURM or TORQUE"
-    schedType = scheduler
-    #volumeType => "pd-ssd on GCP and ssd on AWS"
-    volumeType = volType
     certLength = 0
     output = "/home/%s" % username
     justPrice = ""
