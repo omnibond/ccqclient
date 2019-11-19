@@ -176,6 +176,5 @@ class CCQClient:
         client.upload(job_path + job_name, f.name)
         os.unlink(f.name)
 
-        # XXX: Transfer job script before calling raw_ccqsub?
         return raw_ccqsub(self.hostname, self.username, self.password, job_path, job_name, job_body, vol_type, scheduler)
         # XXX: Get output?
