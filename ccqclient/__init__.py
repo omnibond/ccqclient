@@ -156,18 +156,17 @@ class CCQClient:
 
         return jobs
 
-    def ccqsub(self, job_path, job_name, job_body, vol_type=None, scheduler=None):
+    def ccqsub(self, job_path, job_name, job_body, vol_type=None):
         if not vol_type:
             if self.cloud == CCQCloud.AWS:
                 vol_type = "ssd"
             elif self.cloud == CCQCloud.GCP:
                 vol_type = "pd-ssd"
 
-        if not scheduler:
-            if self.scheduler == CCQScheduler.Slurm:
-                scheduler = "SLURM"
-            elif self.scheduler == CCQScheduler.Torque:
-                scheduler = "Torque"
+        if self.scheduler == CCQScheduler.Slurm:
+            scheduler = "SLURM"
+        elif self.scheduler == CCQScheduler.Torque:
+            scheduler = "Torque"
 
         f = tempfile.NamedTemporaryFile(delete=False)
         f.write(job_body.encode())
