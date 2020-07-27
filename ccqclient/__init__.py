@@ -152,7 +152,7 @@ class CCQClient:
             if len(item) == 0:
                 break
             x = item.split()
-            jobs.append(CCQJob(self, x[0], x[1], x[2], x[3]))
+            jobs.append(CCQJob(self, x[0], x[1], x[2], x[3], x[5]))
 
         return jobs
 
