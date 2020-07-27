@@ -5,6 +5,7 @@ import os
 import tempfile
 import urllib.request
 import webdav3.client
+import pprint
 
 def raw_ccqdel(hostname, username, password, jobId):
     encodedUserName = username
@@ -16,7 +17,7 @@ def raw_ccqdel(hostname, username, password, jobId):
     ccAccessKey = ""
     remoteUserName = username
     databaseDelete = ""
-    data = {"jobId": str(job), "userName": str(encodedUserName), "instanceId": None, "jobNameInScheduler": None, "password": str(encodedPassword), "jobForceDelete": jobForceDelete, 'schedulerType': None, 'schedulerInstanceId': None, 'schedulerInstanceName': None, 'schedulerInstanceIp': None, "valKey": str(valKey), "dateExpires": str(dateExpires), "certLength": str(certLength), "ccAccessKey": str(ccAccessKey), "remoteUserName": str(remoteUserName), "databaseDelete": str(databaseDelete)}
+    data = {"jobId": str(jobId), "userName": str(encodedUserName), "instanceId": None, "jobNameInScheduler": None, "password": str(encodedPassword), "jobForceDelete": jobForceDelete, 'schedulerType': None, 'schedulerInstanceId': None, 'schedulerInstanceName': None, 'schedulerInstanceIp': None, "valKey": str(valKey), "dateExpires": str(dateExpires), "certLength": str(certLength), "ccAccessKey": str(ccAccessKey), "remoteUserName": str(remoteUserName), "databaseDelete": str(databaseDelete), "schedulerHostName": None}
     url = "https://%s/srv/ccqdel" % hostname
     data = json.dumps(data).encode()
     headers = {"Content-Type": "application/json"}
@@ -37,8 +38,40 @@ def raw_ccqstat(hostname, username, password, jobId="all", printErrors="", print
     certLength = 0
     ccAccessKey = ""
     remoteUserName = username
+    printJobOwner = ""
+    printSubmissionTime = ""
+    printDispatchTime = ""
+    printSubmitHost = ""
+    printNumCPUs = ""
     printNumberOfInstancesRegistered = ""
-    data = {"jobId": str(jobId), "userName": str(encodedUserName), "password": str(encodedPassword), "verbose": verbose, "instanceId": None, "jobNameInScheduler": None, "schedulerName": str(schedulerName), "schedulerType": None, "schedulerInstanceId": None, "schedulerInstanceName": None, "schedulerInstanceIp": None, "printErrors": str(printErrors), "valKey": str(valKey), "dateExpires": str(dateExpires), "certLength": str(certLength), "jobInfoRequest": False, "ccAccessKey": str(ccAccessKey), "printOutputLocation": str(printOutputLocation), "printInstancesForJob": str(printInstancesForJob), "remoteUserName": str(remoteUserName), "databaseInfo": str(databaseInfo), "printNumberOfInstancesRegistered": str(printNumberOfInstancesRegistered)}
+    data = {"jobId": str(jobId), \
+        "userName": str(encodedUserName), \
+        "password": str(encodedPassword), \
+        "verbose": verbose, \
+        "instanceId": None, \
+        "jobNameInScheduler": None, \
+        "schedulerName": str(schedulerName), \
+        "schedulerType": None, \
+        "schedulerInstanceId": None, \
+        "schedulerInstanceName": None, \
+        "schedulerHostName": None, \
+        "schedulerInstanceIp": None, \
+        "printErrors": str(printErrors), \
+        "valKey": str(valKey), \
+        "dateExpires": str(dateExpires), \
+        "certLength": str(certLength), \
+        "jobInfoRequest": False, \
+        "ccAccessKey": str(ccAccessKey), \
+        "printJobOwner": str(printJobOwner), \
+        "printOutputLocation": str(printOutputLocation), \
+        "printInstancesForJob": str(printInstancesForJob), \
+        "remoteUserName": str(remoteUserName), \
+        "printSubmissionTime": str(printSubmissionTime), \
+        "printDispatchTime": str(printDispatchTime), \
+        "printSubmitHost": str(printSubmitHost), \
+        "printNumCPUs": str(printNumCPUs),\
+        "databaseInfo": str(databaseInfo), \
+        "printNumberOfInstancesRegistered": str(printNumberOfInstancesRegistered)}
     url = "https://%s/srv/ccqstat" % hostname
     data = json.dumps(data).encode()
     headers = {"Content-Type": "application/json"}
@@ -47,9 +80,9 @@ def raw_ccqstat(hostname, username, password, jobId="all", printErrors="", print
     response = json.loads(response)
     return response["payload"]["message"]
 
-def raw_ccqsub(hostname, username, password, path, name, jobScript, volumeType, schedType):
-    numberOfInstancesRequested = 1
-    numCpusRequested = 1
+def raw_ccqsub(hostname, username, password, path, name, jobScript, volumeType, schedType, num_nodes, num_tasks_per_node):
+    numberOfInstancesRequested = num_nodes
+    numCpusRequested = num_tasks_per_node
     stdoutFileLocation = "default"
     stderrFileLocation = "default"
     memoryRequested = "1000"
@@ -106,10 +139,11 @@ def raw_ccqsub(hostname, username, password, path, name, jobScript, volumeType, 
     return response["payload"]["message"]
 
 class CCQJob:
-    def __init__(self, client, job_id, job_name, scheduler_name, job_status):
+    def __init__(self, client, job_id, job_name, user_name, scheduler_name, job_status):
         self.client = client
         self.job_id = job_id
         self.job_name = job_name
+        self.user_name = user_name
         self.scheduler_name = scheduler_name
         self.job_status = job_status
 
@@ -146,17 +180,18 @@ class CCQClient:
 
     def ccqstat(self):
         data = raw_ccqstat(self.hostname, self.username, self.password)
-
+        pprint.pprint(data)
         jobs = []
         for item in data.split("\n")[2:]:
             if len(item) == 0:
                 break
             x = item.split()
-            jobs.append(CCQJob(self, x[0], x[1], x[2], x[3], x[5]))
+            pprint.pprint(x)
+            jobs.append(CCQJob(self, x[0], x[1], x[2], x[3], x[4]))
 
         return jobs
 
-    def ccqsub(self, job_path, job_name, job_body, vol_type=None):
+    def ccqsub(self, num_nodes, num_tasks_per_node, job_path, job_name, job_body, vol_type=None):
         if not vol_type:
             if self.cloud == CCQCloud.AWS:
                 vol_type = "ssd"
@@ -176,5 +211,8 @@ class CCQClient:
         client.upload(job_path + job_name, f.name)
         os.unlink(f.name)
 
-        return raw_ccqsub(self.hostname, self.username, self.password, job_path, job_name, job_body, vol_type, scheduler)
+        return raw_ccqsub(self.hostname, self.username, self.password, job_path, job_name, job_body, vol_type, scheduler, num_nodes, num_tasks_per_node)
         # XXX: Get output?
+        
+    def ccqdel(self, jobId):
+        return raw_ccqdel(self.hostname, self.username, self.password, jobId)
