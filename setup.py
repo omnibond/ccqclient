@@ -5,7 +5,7 @@ with open("README", "r") as fh:
 
 setuptools.setup(
     name="ccqclient",
-    version="0.0.1",
+    version="0.0.2",
     author="Omnibond Systems LLC",
     author_email="support@cloudycluster.com",
     description="Client for the CCQ meta-scheduler in CloudyCluster",
