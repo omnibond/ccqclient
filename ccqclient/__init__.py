@@ -23,8 +23,8 @@ def raw_ccqdel(hostname, username, password, jobId):
     headers = {"Content-Type": "application/json"}
     request = urllib.request.Request(url, data, headers)
     response = urllib.request.urlopen(request).read().decode()
-    response = json.loads(response)
-    return response["payload"]["message"]
+    #response = json.loads(response)
+    return response#["payload"]["message"]
 
 def raw_ccqstat(hostname, username, password, jobId="all", printErrors="", printOutputLocation="",
     printInstancesForJob="", databaseInfo=""):
@@ -178,9 +178,10 @@ class CCQClient:
         self.cloud = cloud
         self.scheduler = scheduler
 
-    def ccqstat(self):
-        data = raw_ccqstat(self.hostname, self.username, self.password)
+    def ccqstat(self, jobId="all"):
+        data = raw_ccqstat(self.hostname, self.username, self.password, jobId)
         pprint.pprint(data)
+
         jobs = []
         for item in data.split("\n")[2:]:
             if len(item) == 0:
@@ -208,11 +209,14 @@ class CCQClient:
         f.close()
 
         client = webdav3.client.Client({"webdav_hostname": "https://%s" % self.hostname, "webdav_login": self.username, "webdav_password": self.password})
-        client.upload(job_path + job_name, f.name)
-        os.unlink(f.name)
+        client.download(job_path + job_name, job_name)
+
+        job_body = ""
+        with open(job_name, 'r') as script:
+            for line in script.readlines():
+                job_body += line
 
         return raw_ccqsub(self.hostname, self.username, self.password, job_path, job_name, job_body, vol_type, scheduler, num_nodes, num_tasks_per_node)
-        # XXX: Get output?
-        
+
     def ccqdel(self, jobId):
         return raw_ccqdel(self.hostname, self.username, self.password, jobId)
