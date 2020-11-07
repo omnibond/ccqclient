@@ -161,6 +161,12 @@ class CCQJob:
     def instances(self):
         return raw_ccqstat(self.client.hostname, self.client.username, self.client.password, jobId=self.job_id, printInstancesForJob="True")
 
+    def output(self):
+        return self.client.download("%s/%s/%s%s.o" % (self.client.home, self.user_name, self.job_name, self.job_id))
+
+    def error(self):
+        return self.client.download("%s/%s/%s%s.e" % (self.client.home, self.user_name, self.job_name, self.job_id))
+
 class CCQCloud(enum.Enum):
     AWS = enum.auto()
     GCP = enum.auto()
@@ -170,12 +176,13 @@ class CCQScheduler(enum.Enum):
     Torque = enum.auto()
 
 class CCQClient:
-    def __init__(self, hostname, username, password, cloud, scheduler):
+    def __init__(self, hostname, username, password, cloud, scheduler, home="/home"):
         self.hostname = hostname
         self.username = username
         self.password = password
         self.cloud = cloud
         self.scheduler = scheduler
+        self.home = home
 
     def ccqstat(self, jobId="all"):
         data = raw_ccqstat(self.hostname, self.username, self.password, jobId)
@@ -189,24 +196,24 @@ class CCQClient:
 
         return jobs
 
-    def uploadjob(self, job_path, job_name, job_body):
+    def upload(self, path, data):
         f = tempfile.NamedTemporaryFile(delete=False)
-        f.write(job_body.encode())
+        f.write(data.encode())
         f.close()
 
         client = webdav3.client.Client({"webdav_hostname": "https://%s" % self.hostname, "webdav_login": self.username, "webdav_password": self.password})
-        response = client.upload(job_path + job_name, f.name)
+        response = client.upload(path, f.name)
         os.unlink(f.name)
         
         return response
 
-    def downloadjob(self, job_path, job_name):
+    def download(self, path):
         f = tempfile.NamedTemporaryFile(delete=False)
         f.close()
         name = f.name
 
         client = webdav3.client.Client({"webdav_hostname": "https://%s" % self.hostname, "webdav_login": self.username, "webdav_password": self.password})
-        client.download(job_path + job_name, name)
+        client.download(path, name)
 
         f = open(name, "r")
         job_body = f.read()
