@@ -203,22 +203,22 @@ class CCQClient:
         
         return response
 
+    def downloadjob(self, job_path, job_name):
+        f = tempfile.NamedTemporaryFile(delete=False)
+        f.close()
+        name = f.name
 
-    # def downloadjob(self, job_path, job_name, job_body):
-    #     f = tempfile.NamedTemporaryFile(delete=False)
-    #     f.write(job_body.encode())
-    #     f.close()
+        client = webdav3.client.Client({"webdav_hostname": "https://%s" % self.hostname, "webdav_login": self.username, "webdav_password": self.password})
+        client.download(job_path + job_name, name)
 
-    #     client.download(job_path + job_name, job_name)
+        f = open(name, "r")
+        job_body = f.read()
+        f.close()
 
-    #     job_body = ""
-    #     with open(job_name, 'r') as script:
-    #         for line in script.readlines():
-    #             job_body += line 
-        
-    #     return "success"
+        os.unlink(name)
 
-
+        return job_body
+      
     def ccqsub(self, num_nodes, num_tasks_per_node, job_path, job_name, job_body, vol_type=None):
         if not vol_type:
             if self.cloud == CCQCloud.AWS:
