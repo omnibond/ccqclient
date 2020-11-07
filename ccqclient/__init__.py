@@ -5,7 +5,6 @@ import os
 import tempfile
 import urllib.request
 import webdav3.client
-import pprint
 
 def raw_ccqdel(hostname, username, password, jobId):
     encodedUserName = username
@@ -180,14 +179,12 @@ class CCQClient:
 
     def ccqstat(self, jobId="all"):
         data = raw_ccqstat(self.hostname, self.username, self.password, jobId)
-        pprint.pprint(data)
 
         jobs = []
         for item in data.split("\n")[2:]:
             if len(item) == 0:
                 break
             x = item.split()
-            pprint.pprint(x)
             jobs.append(CCQJob(self, x[0], x[1], x[2], x[3], x[4]))
 
         return jobs
