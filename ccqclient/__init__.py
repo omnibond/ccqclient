@@ -192,6 +192,33 @@ class CCQClient:
 
         return jobs
 
+    def uploadjob(self, job_path, job_name, job_body):
+        f = tempfile.NamedTemporaryFile(delete=False)
+        f.write(job_body.encode())
+        f.close()
+
+        client = webdav3.client.Client({"webdav_hostname": "https://%s" % self.hostname, "webdav_login": self.username, "webdav_password": self.password})
+        response = client.upload(job_path + job_name, f.name)
+        os.unlink(f.name)
+        
+        return response
+
+
+    # def downloadjob(self, job_path, job_name, job_body):
+    #     f = tempfile.NamedTemporaryFile(delete=False)
+    #     f.write(job_body.encode())
+    #     f.close()
+
+    #     client.download(job_path + job_name, job_name)
+
+    #     job_body = ""
+    #     with open(job_name, 'r') as script:
+    #         for line in script.readlines():
+    #             job_body += line 
+        
+    #     return "success"
+
+
     def ccqsub(self, num_nodes, num_tasks_per_node, job_path, job_name, job_body, vol_type=None):
         if not vol_type:
             if self.cloud == CCQCloud.AWS:
@@ -203,18 +230,6 @@ class CCQClient:
             scheduler = "SLURM"
         elif self.scheduler == CCQScheduler.Torque:
             scheduler = "Torque"
-
-        f = tempfile.NamedTemporaryFile(delete=False)
-        f.write(job_body.encode())
-        f.close()
-
-        client = webdav3.client.Client({"webdav_hostname": "https://%s" % self.hostname, "webdav_login": self.username, "webdav_password": self.password})
-        client.download(job_path + job_name, job_name)
-
-        job_body = ""
-        with open(job_name, 'r') as script:
-            for line in script.readlines():
-                job_body += line
 
         return raw_ccqsub(self.hostname, self.username, self.password, job_path, job_name, job_body, vol_type, scheduler, num_nodes, num_tasks_per_node)
 
